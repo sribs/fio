@@ -23,7 +23,7 @@ DEBUGFLAGS = -DFIO_INC_DEBUG
 CPPFLAGS= -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -DFIO_INTERNAL $(DEBUGFLAGS)
 OPTFLAGS= -g -ffast-math
 CFLAGS	:= -std=gnu99 -Wwrite-strings -Wall -Wdeclaration-after-statement $(OPTFLAGS) $(EXTFLAGS) $(BUILD_CFLAGS) -I. -I$(SRCDIR) $(CFLAGS)
-LIBS	+= -lm $(EXTLIBS)
+LIBS	+= -lm -lstdc++ $(EXTLIBS)
 PROGS	= fio
 SCRIPTS = $(addprefix $(SRCDIR)/,tools/fio_generate_plots tools/plot/fio2gnuplot tools/genfio tools/fiologparser.py tools/hist/fiologparser_hist.py tools/hist/fio-histo-log-pctiles.py tools/fio_jsonplus_clat2csv)
 
@@ -32,10 +32,6 @@ ifndef CONFIG_FIO_NO_OPT
 endif
 ifdef CONFIG_BUILD_NATIVE
   CFLAGS := -march=native $(CFLAGS)
-endif
-
-ifdef CONFIG_GFIO
-  PROGS += gfio
 endif
 
 SOURCE :=	$(sort $(patsubst $(SRCDIR)/%,%,$(wildcard $(SRCDIR)/crc/*.c)) \
@@ -330,6 +326,9 @@ T_TEST_PROGS += $(T_IOU_RING_PROGS)
 endif
 
 PROGS += $(T_PROGS)
+ifdef CONFIG_GFIO
+  PROGS += gfio
+endif
 
 ifdef CONFIG_HAVE_CUNIT
 UT_OBJS = unittests/unittest.o
@@ -391,8 +390,8 @@ override CFLAGS := -DFIO_VERSION='"$(FIO_VERSION)"' $(CFLAGS)
 
 %.o : %.c
 	@mkdir -p $(dir $@)
-	$(QUIET_CC)$(CC) -o $@ $(CFLAGS) $(CPPFLAGS) -c $<
-	@$(CC) -MM $(CFLAGS) $(CPPFLAGS) $(SRCDIR)/$*.c > $*.d
+	$(QUIET_CC)$(CC) -fpic -o $@ $(CFLAGS) $(CPPFLAGS) -lstdc++ -c $<
+	@$(CC) -MM $(CFLAGS) $(CPPFLAGS) $(SRCDIR)/$*.c -fpic -lstdc++> $*.d
 	@mv -f $*.d $*.d.tmp
 	@sed -e 's|.*:|$*.o:|' < $*.d.tmp > $*.d
 	@if type -p fmt >/dev/null 2>&1; then				\
@@ -480,7 +479,7 @@ t/ieee754: $(T_IEEE_OBJS)
 	$(QUIET_LINK)$(CC) $(LDFLAGS) $(CFLAGS) -o $@ $(T_IEEE_OBJS) $(LIBS)
 
 fio: $(FIO_OBJS)
-	$(QUIET_LINK)$(CC) $(LDFLAGS) $(CFLAGS) -o $@ $(FIO_OBJS) $(LIBS) $(HDFSLIB)
+	echo "$(QUIET_LINK)$(CC) $(LDFLAGS) $(CFLAGS) -o $@ $(FIO_OBJS) $(LIBS) $(HDFSLIB)"
 
 gfio: $(GFIO_OBJS)
 	$(QUIET_LINK)$(CC) $(filter-out -static, $(LDFLAGS)) -o gfio $(GFIO_OBJS) $(LIBS) $(GFIO_LIBS) $(GTK_LDFLAGS) $(HDFSLIB)
